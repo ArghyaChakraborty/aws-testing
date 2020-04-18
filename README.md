@@ -1,2 +1,1 @@
-# aws-testing
-Codes related to AWS testing
+### This repository contains all the experiments done by me on AWS. I have tried to provide as much details steps & screenshots as possible. Hope this helps someone (beside me).
