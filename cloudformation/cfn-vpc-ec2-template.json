@@ -1,0 +1,333 @@
+{
+    "AWSTemplateFormatVersion": "2010-09-09",
+    
+	"Metadata": {
+		"README-Pre-Conditions" : [
+			"Create an Elastic IP and copy the ID prior to creating the Clodformation Stack",
+			"Decide on the CIDR Range of the VPC (ex. 10.0.0.0/16)" , 
+			"Decide on the CIDR Range of Public Subnet (ex. 10.0.1.0/24)",
+			"Decide on the CIDR Range of Private Subnet (ex. 10.0.2.0/24)",
+			"Decide on the AZ for Public subnet (ex. us-east-1a)",
+			"Decide on the AZ for Private subnet (ex. us-east-1a)",
+			"AMI Id for EC2 Instance Creation. Try to create an EC2 instance in the AZ where you would want the CFN Stack to be created and while selecting the AMI, copy the AMI Id",
+			"EC2 Instance Size (ex. t2.micro)",
+			"Key Pair Name to connect to EC2 instance. If no key-pair is available, please create a key-pair before running the CFN Template"
+		],
+		
+		"README-Resources-Created" : [
+			"VPC",
+			"Internet GW",
+			"Public subnet", "Public Route Table", "Public Route Table Route for IGW", "NAT GW",
+			"Private Subnet", "Private Route Table", "Private Route Table Route for NAT GW",
+			"A Security Group allowing ssh connection from all IP Address", "EC2 instance inside Public Subnet"
+		],
+		
+	  "AWS::CloudFormation::Interface" : {
+		"ParameterGroups" : [
+			{
+				"Label" : {
+				  "default" : "VPC Parameters"
+				},
+				"Parameters" : ["CFNTESTPUBNATGWEIP", "VPCCIDRRANGE", "PUBLICSUBNETAZ", "PUBLICSUBNETCIDRRANGE", "PRIVATESUBNETAZ", "PRIVATESUBNETCIDRRANGE"]
+			},
+			{
+				"Label" : {
+				  "default" : "EC2 Parameters"
+				},
+				"Parameters" : ["EC2AMIID", "EC2INSTANCETYPE", "EC2KEYPAIRNAME"]
+			}
+		]
+	  }
+    },
+
+	
+	"Parameters": {
+		"CFNTESTPUBNATGWEIP": {
+			"Description": "ID of Elastic IP to associate NAT Gateway with",
+			"Type": "String"
+		},
+		"VPCCIDRRANGE": {
+			"Description": "CIDR Range for VPC. Should follow format : a.b.c.d/x",
+			"Type": "String"
+		},
+		"PUBLICSUBNETAZ": {
+			"Description": "Availability Zone for PUBLIC Subnet. Should be one of the valid AZ codes from AWS",
+			"Type": "AWS::EC2::AvailabilityZone::Name"
+		},
+		"PUBLICSUBNETCIDRRANGE": {
+			"Description": "CIDR Range for PUBLIC Subnet. Should follow format : a.b.c.d/x and should be within the range of VPC. Should be non-overlapping with Private VPC",
+			"Type": "String"
+		},
+		"PRIVATESUBNETAZ": {
+			"Description": "Availability Zone for PRIVATE Subnet. Should be one of the valid AZ codes from AWS",
+			"Type": "AWS::EC2::AvailabilityZone::Name"
+		},
+		"PRIVATESUBNETCIDRRANGE": {
+			"Description": "CIDR Range for PRIVATE Subnet. Should follow format : a.b.c.d/x and should be within the range of VPC. Should be non-overlapping with Public VPC",
+			"Type": "String"
+		},
+		"EC2AMIID": {
+			"Description": "Amazon Machine Image Id to launch EC2 instance with",
+			"Type": "String"			
+		},
+		"EC2INSTANCETYPE" : {
+			"Description" : "Instance Type",
+			"Type" : "String",
+			"AllowedValues" : ["t2.micro","t2.nano", "t2.small"],
+			"Default" : "t2.micro"
+		},
+		"EC2KEYPAIRNAME" : {
+			"Description" : "Key Pair Name to use to connect to EC2 instances. If one is not already created, please create one before creating CloudFormation stack",
+			"Type" : "AWS::EC2::KeyPair::KeyName"
+		}
+	},
+  
+    "Resources": {
+	
+        "CFNTESTVPC": {
+            "Type": "AWS::EC2::VPC",
+            "Properties": {
+			  "CidrBlock" : {
+				"Ref" : "VPCCIDRRANGE"
+			  },
+			  "EnableDnsHostnames" : true,
+			  "EnableDnsSupport" : true,
+			  "InstanceTenancy" : "default",
+			  "Tags" : [ 
+				{
+					"Key" : "Name",
+					"Value" : "CFN Test VPC"
+				}
+			  ]
+			},
+            "Metadata": {
+            }
+        },
+		
+		
+		
+        "CFNTESTIGW": {
+            "Type": "AWS::EC2::InternetGateway",
+            "Properties": {},
+            "Metadata": {
+            }
+        },
+        "CFNTESTVPCIGWCONN": {
+            "Type": "AWS::EC2::VPCGatewayAttachment",
+            "Properties": {
+                "VpcId": {
+                    "Ref": "CFNTESTVPC"
+                },
+                "InternetGatewayId": {
+                    "Ref": "CFNTESTIGW"
+                }
+            },
+            "Metadata": {
+            }
+        },
+		
+		
+        "CFNTESTPUBSUBNET": {
+            "Type": "AWS::EC2::Subnet",
+            "Properties": {
+                "VpcId": {
+                    "Ref": "CFNTESTVPC"
+                },
+			    "AvailabilityZone" : {
+					"Ref" : "PUBLICSUBNETAZ"
+				},
+			    "CidrBlock" : {
+					"Ref" : "PUBLICSUBNETCIDRRANGE"
+				},
+			    "MapPublicIpOnLaunch" : true,
+			    "Tags" : [ 				
+					{
+						"Key" : "Name",
+						"Value" : "CFN Test Public Subnet"
+					} 
+				]
+            },
+            "Metadata": {
+            }
+        },
+        "CFNTESTPUBSUBNETRTCONN": {
+            "Type": "AWS::EC2::SubnetRouteTableAssociation",
+            "Properties": {
+                "SubnetId": {
+                    "Ref": "CFNTESTPUBSUBNET"
+                },
+                "RouteTableId": {
+                    "Ref": "CFNTESTPUBRT"
+                }
+            },
+            "Metadata": {
+            }
+        },
+        "CFNTESTPUBRT": {
+            "Type": "AWS::EC2::RouteTable",
+            "Properties": {
+                "VpcId": {
+                    "Ref": "CFNTESTVPC"
+                }
+            },
+            "Metadata": {
+            }
+        },
+        "CFNTESTPUBROUTE": {
+            "Type": "AWS::EC2::Route",
+            "Properties": {
+                "RouteTableId": {
+                    "Ref": "CFNTESTPUBRT"
+                },
+				"DestinationCidrBlock" : "0.0.0.0/0",
+				"GatewayId" : {
+					"Ref" : "CFNTESTIGW"
+				}
+            },
+            "Metadata": {
+            }
+        },
+		"CFNTESTPUBNATGW": {
+            "Type": "AWS::EC2::NatGateway",
+            "Properties": {
+                "SubnetId": {
+                    "Ref": "CFNTESTPUBSUBNET"
+                },
+				"AllocationId" : {
+					"Ref" : "CFNTESTPUBNATGWEIP"
+				}
+            },
+            "Metadata": {
+            }
+        },
+		
+
+
+        "CFNTESTPRISUBNET": {
+            "Type": "AWS::EC2::Subnet",
+            "Properties": {
+                "VpcId": {
+                    "Ref": "CFNTESTVPC"
+                },
+			    "AvailabilityZone" : {
+					"Ref" : "PRIVATESUBNETAZ"
+				},
+			    "CidrBlock" : {
+					"Ref" : "PRIVATESUBNETCIDRRANGE"
+				},
+			    "Tags" : [ 				
+					{
+						"Key" : "Name",
+						"Value" : "CFN Test Private Subnet"
+					} 
+				]
+            },
+            "Metadata": {
+            }
+        },
+        "CFNTESTPRIRT": {
+            "Type": "AWS::EC2::RouteTable",
+            "Properties": {
+                "VpcId": {
+                    "Ref": "CFNTESTVPC"
+                }
+            },
+            "Metadata": {
+            }
+        },
+        "CFNTESTPRIROUTE": {
+            "Type": "AWS::EC2::Route",
+            "Properties": {
+                "RouteTableId": {
+                    "Ref": "CFNTESTPRIRT"
+                },
+				"DestinationCidrBlock" : "0.0.0.0/0",
+				"NatGatewayId" : {
+					"Ref" : "CFNTESTPUBNATGW"
+				}
+            },
+            "Metadata": {
+            }
+        },
+        "CFNTESTPRISUBNETRTCONN": {
+            "Type": "AWS::EC2::SubnetRouteTableAssociation",
+            "Properties": {
+                "SubnetId": {
+                    "Ref": "CFNTESTPRISUBNET"
+                },
+                "RouteTableId": {
+                    "Ref": "CFNTESTPRIRT"
+                }
+            },
+            "Metadata": {
+            }
+        },
+		
+		
+		"CFNTESTPUBLICEC2SECURITYGROUP" : {
+		  "Type" : "AWS::EC2::SecurityGroup",
+		  "Properties" : {
+			  "GroupDescription" : "Security Group for public EC2 instance",
+			  "GroupName" : "ec2-public-sg",
+			  "SecurityGroupEgress" : [ 
+				{
+				  "CidrIp" : "0.0.0.0/0",
+				  "Description" : "Allow all outbound traffic",
+				  "FromPort" : -1,
+				  "IpProtocol" : -1,
+				  "ToPort" : -1
+				}
+			  ],
+			  "SecurityGroupIngress" : [ 
+				{
+				  "CidrIp" : "0.0.0.0/0",
+				  "Description" : "Allow inbound connection from all IP address",
+				  "FromPort" : 22,
+				  "IpProtocol" : "tcp",
+				  "ToPort" : 22
+				}
+			  ],
+			  "Tags" : [ {
+				"Key" : "Name",
+				"Value" : "ec2-public-sg"
+			  } ],
+			  "VpcId" : {
+				"Ref" : "CFNTESTVPC"
+			  }
+			}
+		},
+
+
+		"CFNTESTPUBLICEC2INSTANCE" : {
+		  "Type" : "AWS::EC2::Instance",
+		  "Properties" : {
+			  "AvailabilityZone" : {
+				"Ref" : "PUBLICSUBNETAZ"
+			  },
+			  "ImageId" : {
+				"Ref" : "EC2AMIID"
+			  },
+			  "InstanceType" : {
+				"Ref" : "EC2INSTANCETYPE"
+			  },
+			  "KeyName" : {
+				"Ref" : "EC2KEYPAIRNAME"
+			  },
+			  "SecurityGroupIds" : [ 
+			  {
+				"Ref" : "CFNTESTPUBLICEC2SECURITYGROUP"
+			  }],
+			  "SubnetId" : {
+				"Ref" : "CFNTESTPUBSUBNET"
+			  },
+			  "Tags" : [ {
+				"Key" : "Name",
+				"Value" : "public-ec2"
+			  } ],
+			  "Tenancy" : "default"
+			}
+		}
+		
+
+    }
+}
