@@ -12,11 +12,12 @@ npm install -g pm2
 
 echo "Creating Service Script"
 echo "var http = require('http');" > ./app.js
+echo "var port = 8081;" >> ./app.js
 echo "http.createServer(function (request, response) {" >> ./app.js
 echo "  response.writeHead(200, {'Content-Type': 'text/plain'});" >> ./app.js
 echo "  response.end('Hello World\n');" >> ./app.js
-echo "}).listen(8081);" >> ./app.js
-echo "console.log('Server running at http://127.0.0.1:8081/');" >> ./app.js
+echo "}).listen(port);" >> ./app.js
+echo "console.log('Server running at http://127.0.0.1:'+port);" >> ./app.js
 
 echo "Starting Service"
 pm2 start -f app.js -i 1
