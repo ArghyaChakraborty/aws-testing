@@ -15,7 +15,7 @@ echo "var http = require('http');" > ./app.js
 echo "var port = 8081;" >> ./app.js
 echo "http.createServer(function (request, response) {" >> ./app.js
 echo "  response.writeHead(200, {'Content-Type': 'text/plain'});" >> ./app.js
-echo "  response.end('Hello World\n');" >> ./app.js
+echo "  response.end('Hello World From: '+port);" >> ./app.js
 echo "}).listen(port);" >> ./app.js
 echo "console.log('Server running at http://127.0.0.1:'+port);" >> ./app.js
 
