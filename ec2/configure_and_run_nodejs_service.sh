@@ -4,24 +4,38 @@
 # This also configures the service to be up and running on EC2 reboot
 # Tested on: AWS Linux AMI 2
 
-echo "Installing NPM and PM2"
-curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.34.0/install.sh | bash
-. ~/.nvm/nvm.sh
-nvm install node
-npm install -g pm2
+sudo su -
 
-echo "Creating Service Script"
+PORT="8081"
+
+cd /home
+echo "Starting to install npm" > ./install_log.log
+
+yum install -y gcc-c++ make
+echo "Installed gcc and make" >> ./install_log.log
+
+curl -sL https://rpm.nodesource.com/setup_15.x | sudo -E bash -
+echo "Downloaded npm setup tool" >> ./install_log.log
+
+yum install -y nodejs
+echo "Installed Node JS" >> ./install_log.log
+node -v >> ./install_log.log
+npm install -g pm2
+echo "Installed pm2" >> ./install_log.log
+
+echo "Creating Service Script" >> ./install_log.log
 echo "var http = require('http');" > ./app.js
-echo "var port = 8081;" >> ./app.js
+echo "var port = ${PORT};" >> ./app.js
 echo "http.createServer(function (request, response) {" >> ./app.js
 echo "  response.writeHead(200, {'Content-Type': 'text/plain'});" >> ./app.js
 echo "  response.end('Hello World From: '+port);" >> ./app.js
 echo "}).listen(port);" >> ./app.js
 echo "console.log('Server running at http://127.0.0.1:'+port);" >> ./app.js
 
-echo "Starting Service"
+echo "Starting Service" >>  ./install_log.log
 pm2 start -f app.js -i 1
 
-echo "Enabling service run at startup"
+echo "Enabling service run at startup" >> ./install_log.log
 pm2 startup
-sudo env PATH=$PATH:/home/ec2-user/.nvm/versions/node/v15.14.0/bin /home/ec2-user/.nvm/versions/node/v15.14.0/lib/node_modules/pm2/bin/pm2 startup systemd -u ec2-user --hp /home/ec2-user
+
+echo "all done" >> ./install_log.log
