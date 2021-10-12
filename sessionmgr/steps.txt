@@ -1,0 +1,32 @@
+1. Create a VPC with a certain CIDR: vpc-1
+2. Create a subnet: subnet-1
+3. Create a subnet: subnet-2
+4. Create an Internet Gateway. Associate it with vpc-1 & not the default VPC: igw-1
+5. Create a NAT Gateway. Select subnet-1 & assign a Elastic IP: natgw-1
+6. Create a route table. Select vpc-1. Add a route "0.0.0.0/0 -> igw-1"): rt-1
+7. Create a route table. Select vpc-1. Add a route "0.0.0.0/0 -> natgw-1": rt2
+8. Associate subnet-1 with rt-1
+9. Associate subnet-2 with rt-2
+10. Create an EC2 instance. Put it in subnet-2. Do not assign any public IPv4. For Security Group, do not assign ANY inbound rules: ec2-1
+11. Create an IAM role & select policy AmazonSSMManagedInstanceCore: role-1
+12. Modify ec2-1 & assign role role-1
+13. Create a security group. It should allow HTTPS (& RDP if Windows is being used) from vpc-1 CIDR: sg-1
+14. Create 3 VPC endpoints. Select vpc-1 & subnet-2. Also select sg-1
+	com.amazonaws.[region].ssm
+	com.amazonaws.[region].ec2messages
+	com.amazonaws.[region].ssmmessages 
+15. Open Session Manager & you should be able to see the instance listed under it. Start a session. You will get a bash prompt - if Linux is used, a Powershell prompt - if Windows is used
+16. You can create a new user & assign a password for easier login, so that you do not have to use default OS admin user
+17. In your laptop, install AWS CLI, Session Manager AWS CLI plugin & configure aws cli
+18. For initiating a session, execute: 
+	aws ssm start-session --target <instance id> --document-name AWS-StartPortForwardingSession --parameters "localPortNumber=1001, portNumber=22" --region <aws region> (for Linux)
+	aws ssm start-session --target <instance id> --document-name AWS-StartPortForwardingSession --parameters "localPortNumber=1001, portNumber=3389" --region <aws region> (for Windows)
+19. For Linux, it will logged into a bash 
+	For Windows, we can open RDP client, enter IP as "local:1001" , username as the one created in step 16 & later on corresponding password. You should be able to open the Remote Desktop
+	
+Appendix:
+	1. Steps to create user in Windows Server
+		- Logged into powershell of the machine using Session Manager
+		- Executed command: New-localuser
+		- When prompted, entered username (demouser) & password
+		- Then executed this command to add the user to Admin group: Add-localgroupmember -Group "Administrators" -Member "demouser"
