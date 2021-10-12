@@ -30,3 +30,7 @@ Appendix:
 		- Executed command: New-localuser
 		- When prompted, entered username (demouser) & password
 		- Then executed this command to add the user to Admin group: Add-localgroupmember -Group "Administrators" -Member "demouser"
+
+	2. Important URLs:
+		- https://aws-dojo.com/excercises/excercise21/
+		- https://aws.amazon.com/premiumsupport/knowledge-center/ec2-systems-manager-vpc-endpoints/
